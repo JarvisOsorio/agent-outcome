@@ -2,36 +2,15 @@
 
 **VERIFY · ASSERT · REPRODUCE**
 
-Independent **postcondition verification** for AI agent side effects. An agent does **not** get to declare success — you observe GitHub, Postgres (and later more systems) and assert the expected external state.
+Independent postcondition verification for AI agent side effects — observe GitHub/Postgres, assert expected state, CI-gate PASS/FAIL.
 
-Local-first. Python. SQLite + portable JSON. Apache-2.0.
+Your agent said “All done!” A green receipt is not proof. Agent Outcome observes the target system (fakes for CI, live adapters opt-in) and runs deterministic assertions so side-effect drift fails closed with machine-readable codes. Receipts are context only — never sole evidence.
 
-**Not** a tracing dashboard, eval leaderboard, LLM wrapper, agent framework, orchestration platform, or Agent Replay Lab dual-build.
+Local-first. Python 3.11+. SQLite + portable JSON. Apache-2.0.
 
 [![CI](https://github.com/JarvisOsorio/agent-outcome/actions/workflows/ci.yml/badge.svg)](https://github.com/JarvisOsorio/agent-outcome/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
-
-## Why
-
-Biggest gap after “the agent finished” is proving it finished **correctly**. Agents fail silently: drift, partial completion, wrong tools, plausible-but-wrong results. Observability is crowded (Langfuse, LangSmith, Phoenix, Braintrust). **Outcome verification of real-world side effects** is underserved.
-
-## Honest boundaries
-
-| This product | Not this product |
-|--------------|------------------|
-| Deterministic assertions against **independent observations** | Trusting `agent_claimed_success` / “Done!” text |
-| GitHub issue + Postgres row/column/count checks (v0.1) | Tracing UI, prompt eval, vector similarity |
-| Failure → reusable verification case for CI re-runs | Agent framework / orchestration |
-| Hermetic fakes in unit tests; optional live adapters | Cassette/replay of tool I/O |
-
-### Sibling tools (do not merge)
-
-| Tool | Job |
-|------|-----|
-| **agent-outcome** (this repo) | Postcondition / side-effect verification against real systems |
-| **[agent-replay-lab](https://github.com/JarvisOsorio/agent-replay-lab)** | VCR for **tool I/O** (record / mock-replay / diff) |
-| **mcp-pordego** | MCP protocol / gateway |
-| **agentscrub** | Transcript secret scrubbing |
+[![GitHub release](https://img.shields.io/github/v/release/JarvisOsorio/agent-outcome?include_prereleases)](https://github.com/JarvisOsorio/agent-outcome/releases)
 
 ## Install
 
@@ -47,7 +26,7 @@ pytest
 python examples/claim_vs_verify/run.py
 ```
 
-## Quick API
+## Minimal API
 
 ```python
 from agent_outcome import verify
@@ -78,19 +57,23 @@ if not result.passed:
     print(result.failures)  # machine-readable codes + expected/actual
 ```
 
-Verification **must** use independent observers (`FakeGitHubObserver` / `LiveGitHubObserver`, etc.). A receipt where `agent_claimed_success=true` cannot flip `passed=True` by itself — covered by tests.
+Public exports: `verify`, `AssertionSpec`, `Failure`, `Receipt`, `VerificationResult`, `VerificationCase`, `case_from_result`, `load_case`, `save_case`. Observers: `FakeGitHubObserver` / `LiveGitHubObserver`, `FakePostgresObserver` / `LivePostgresObserver`.
+
+A receipt where `agent_claimed_success=true` cannot flip `passed=True` by itself — covered by tests.
 
 ## CLI
 
-```bash
-agent-outcome init
-agent-outcome verify --assertions path.json --github-fixture gh.json --postgres-fixture pg.json [--receipt r.json] [--save-on-fail] [--json]
-agent-outcome test <case_id> --github-fixture gh.json [--json]
-agent-outcome inspect <case|receipt|run|file> [--json]
-agent-outcome export ./bundle.json
-agent-outcome import ./bundle.json
-agent-outcome doctor [--json]
-```
+| Command | Purpose |
+|---------|---------|
+| `agent-outcome init` | Create `.agent-outcome/` + SQLite store |
+| `agent-outcome verify` | Run `--assertions` or `--case` (+ optional `--receipt`, fixtures / `--live`) |
+| `agent-outcome test <case>` | Re-run a saved failure case |
+| `agent-outcome inspect <target>` | Inspect case, receipt, run, or file |
+| `agent-outcome export <path>` | Portable JSON bundle (`agent-outcome.export.v1`) |
+| `agent-outcome import <path>` | Import bundle (integrity-checked) |
+| `agent-outcome doctor` | Honest readiness (`trusts_agent_success_text=false`) |
+
+Common flags: `--github-fixture`, `--postgres-fixture`, `--live`, `--save-case`, `--save-on-fail`, `--json`.
 
 ### Exit codes
 
@@ -101,12 +84,32 @@ agent-outcome doctor [--json]
 | 2 | Invalid input / case / receipt |
 | 3 | Infrastructure / observer / storage error |
 
+## Honesty
+
+| This product | Not this product |
+|--------------|------------------|
+| Deterministic assertions against **independent observations** | Trusting `agent_claimed_success` / “Done!” text |
+| GitHub issue + Postgres row/column/count checks (v0.1) | Tracing UI, prompt eval, vector similarity |
+| Failure → reusable verification case for CI re-runs | Agent framework / orchestration |
+| Hermetic fakes in unit tests; optional live adapters | Cassette/replay of tool I/O |
+
+### Sibling boundaries (do not merge)
+
+| Tool | Job |
+|------|-----|
+| **agent-outcome** (this repo) | Postcondition / side-effect verification against real systems |
+| **[agent-replay-lab](https://github.com/JarvisOsorio/agent-replay-lab)** | VCR for **tool I/O** (record / mock-replay / diff) |
+| **mcp-pordego** | MCP protocol / gateway |
+| **agentscrub** | Transcript secret scrubbing |
+
+Observability (Langfuse, LangSmith, Phoenix, Braintrust) answers “what happened in the run?” Outcome asserts whether the **external world** matches expected postconditions.
+
 ## Example (claim vs verify)
 
 `examples/claim_vs_verify` shows:
 
 1. Agent receipt claims success  
-2. Independent observations **PASS** against the real expected world  
+2. Independent observations **PASS** against the expected world  
 3. Intentional wrong title/label/row → **FAIL** with `GITHUB_TITLE_MISMATCH`, `GITHUB_LABEL_MISSING`, `PG_COLUMN_MISMATCH` — even though the receipt still says success  
 4. Failure becomes a reusable case
 
@@ -133,7 +136,7 @@ Default: `.agent-outcome/store.sqlite` plus JSON case sidecars. Portable export 
 
 ## What v0.1 does **not** include
 
-MCP adapter (deferred), Slack/filesystem adapters, dashboards, semantic/LLM judges, Agent Assurance policy engines, dual-building Replay Lab cassettes here.
+MCP adapter (deferred), Slack/filesystem adapters, dashboards, semantic/LLM judges, Agent Assurance policy engines, dual-building Replay Lab cassettes here. Not on PyPI yet.
 
 ## License
 
