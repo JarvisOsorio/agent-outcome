@@ -1,0 +1,74 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    name: test (py${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+
+      - name: Unit + integration (hermetic)
+        run: pytest -q --ignore=tests/test_live_optional.py
+
+      - name: Live optional markers stay skipped without secrets
+        run: pytest -q tests/test_live_optional.py
+
+      - name: Example claim_vs_verify
+        run: python examples/claim_vs_verify/run.py
+
+      - name: CLI stranger smoke
+        run: |
+          rm -rf /tmp/ao-smoke && mkdir -p /tmp/ao-smoke && cd /tmp/ao-smoke
+          agent-outcome init
+          agent-outcome doctor --json
+          agent-outcome verify \
+            --assertions "$GITHUB_WORKSPACE/examples/claim_vs_verify/assertions_pass.json" \
+            --receipt "$GITHUB_WORKSPACE/examples/claim_vs_verify/receipt_claim_success.json" \
+            --github-fixture "$GITHUB_WORKSPACE/examples/claim_vs_verify/github_world.json" \
+            --postgres-fixture "$GITHUB_WORKSPACE/examples/claim_vs_verify/postgres_world.json" \
+            --json
+          set +e
+          agent-outcome verify \
+            --assertions "$GITHUB_WORKSPACE/examples/claim_vs_verify/assertions_fail.json" \
+            --receipt "$GITHUB_WORKSPACE/examples/claim_vs_verify/receipt_claim_success.json" \
+            --github-fixture "$GITHUB_WORKSPACE/examples/claim_vs_verify/github_world.json" \
+            --postgres-fixture "$GITHUB_WORKSPACE/examples/claim_vs_verify/postgres_world.json" \
+            --save-on-fail --case-name claim-lie --json
+          code=$?
+          set -e
+          test "$code" -eq 1
+
+  lint-packaging:
+    name: packaging
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: |
+          python -m pip install --upgrade pip build
+          python -m build
+          pip install dist/*.whl
+          agent-outcome doctor --json
