@@ -1,0 +1,14 @@
+{
+  "schema": "agent-outcome.receipt.v1",
+  "id": "rcpt_demo_claim",
+  "task": "Create GitHub issue #42 and mark order ord_1 paid",
+  "agent_claimed_success": true,
+  "agent_message": "Successfully created the issue and updated the order. All done!",
+  "tools": [
+    {"name": "github.create_issue", "ok": true},
+    {"name": "db.update", "ok": true}
+  ],
+  "metadata": {
+    "note": "This receipt is context only. It must never be treated as proof."
+  }
+}

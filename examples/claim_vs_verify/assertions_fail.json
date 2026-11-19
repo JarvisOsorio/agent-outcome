@@ -1,0 +1,40 @@
+{
+  "task": "Create GitHub issue #42 and mark order ord_1 paid",
+  "assertions": [
+    {
+      "kind": "issue_exists",
+      "adapter": "github",
+      "params": {"owner": "acme", "repo": "app", "number": 42}
+    },
+    {
+      "kind": "title_equals",
+      "adapter": "github",
+      "params": {
+        "owner": "acme",
+        "repo": "app",
+        "number": 42,
+        "expected": "Totally different title the agent hallucinated"
+      }
+    },
+    {
+      "kind": "label_exists",
+      "adapter": "github",
+      "params": {
+        "owner": "acme",
+        "repo": "app",
+        "number": 42,
+        "label": "wontfix"
+      }
+    },
+    {
+      "kind": "column_equals",
+      "adapter": "postgres",
+      "params": {
+        "table": "orders",
+        "where": {"id": "ord_1"},
+        "column": "status",
+        "expected": "cancelled"
+      }
+    }
+  ]
+}

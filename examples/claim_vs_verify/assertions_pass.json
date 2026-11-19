@@ -1,0 +1,60 @@
+{
+  "task": "Create GitHub issue #42 and mark order ord_1 paid",
+  "assertions": [
+    {
+      "kind": "issue_exists",
+      "adapter": "github",
+      "params": {"owner": "acme", "repo": "app", "number": 42}
+    },
+    {
+      "kind": "title_equals",
+      "adapter": "github",
+      "params": {
+        "owner": "acme",
+        "repo": "app",
+        "number": 42,
+        "expected": "Fix authentication"
+      }
+    },
+    {
+      "kind": "label_exists",
+      "adapter": "github",
+      "params": {"owner": "acme", "repo": "app", "number": 42, "label": "bug"}
+    },
+    {
+      "kind": "body_contains",
+      "adapter": "github",
+      "params": {
+        "owner": "acme",
+        "repo": "app",
+        "number": 42,
+        "substring": "oauth"
+      }
+    },
+    {
+      "kind": "repo_equals",
+      "adapter": "github",
+      "params": {"owner": "acme", "repo": "app", "number": 42}
+    },
+    {
+      "kind": "row_exists",
+      "adapter": "postgres",
+      "params": {"table": "orders", "where": {"id": "ord_1"}}
+    },
+    {
+      "kind": "column_equals",
+      "adapter": "postgres",
+      "params": {
+        "table": "orders",
+        "where": {"id": "ord_1"},
+        "column": "status",
+        "expected": "paid"
+      }
+    },
+    {
+      "kind": "count_equals",
+      "adapter": "postgres",
+      "params": {"table": "orders", "where": {"status": "paid"}, "expected": 2}
+    }
+  ]
+}

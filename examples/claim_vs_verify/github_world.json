@@ -1,0 +1,13 @@
+{
+  "issues": [
+    {
+      "owner": "acme",
+      "repo": "app",
+      "number": 42,
+      "title": "Fix authentication",
+      "body": "Broken oauth callback for users",
+      "labels": ["bug", "security"],
+      "state": "open"
+    }
+  ]
+}

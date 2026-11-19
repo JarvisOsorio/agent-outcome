@@ -1,0 +1,9 @@
+{
+  "tables": {
+    "orders": [
+      {"id": "ord_1", "status": "paid", "amount": 10},
+      {"id": "ord_2", "status": "paid", "amount": 20},
+      {"id": "ord_3", "status": "pending", "amount": 5}
+    ]
+  }
+}
